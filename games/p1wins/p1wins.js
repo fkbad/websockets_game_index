@@ -61,16 +61,22 @@ function initGame(websocket) {
 
     // search params uses dict-like get syntax
     // has separate method to check whether or not a field is in the URL
-    const match_id = url_params.get("match-id")
 
+    // const match_id = url_params.get("match-id")
+    const join_match_id = url_params.get("join")
+    const spectate_match_id = url_params.get("spectate")
+
+    if (join_match_id && spectate_match_id) {
+      console.log('found both join and spectate match id in URI, exiting')
+      return
+    }
+
+    // generate the id for the user
     const location = window.location
+
     const hostname = location.hostname
     const port = location.port
-    console.log("user with hostname:",hostname,"at port",port)
-
-
     const uuid = self.crypto.randomUUID()
-    console.log("generated uuid:",uuid)
 
     let id = hostname + "-" + port + "-" + uuid + "--:3"
 
@@ -79,17 +85,25 @@ function initGame(websocket) {
       "type": "request",
       "id": id
     }
-    if (match_id) {
+    if (join_match_id) {
       // added creator tag for user creating the match
-      console.log("found match id[", match_id, "]in URL ")
+      console.log("found JOIN match id[", join_match_id, "]in URL ")
       message.operation = "join-match"
       const params = {
-        "match-id" : match_id,
+        "match-id" : join_match_id,
         "player-name" : "player2"
       }
       message.params = params
 
 
+    } else if (spectate_match_id) {
+      // spectating match
+      message.operation = "spectate-match"
+      const params = {
+        "match-id" : spectate_match_id,
+        "player-name" : "player2"
+      }
+      message.params = params
     } else  { 
       // TODO make global utils to store the information
       // about message format so this could be a global variable call
