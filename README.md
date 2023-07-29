@@ -14,9 +14,9 @@ so the server can then parse they want to join a player 1 wins match with id `co
 
 
 ## packages:
-https://pypi.org/project/wonderwords/
-- to generate funny match-id's
+coolname : generate names with generate_slug(word-count)
 
 ## personal message format reference 
+every request besides `list-games` must have a "params" member
 
 
