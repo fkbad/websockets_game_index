@@ -18,6 +18,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
   init(websocket)
 
+  listen(websocket)
+
 });
 
 
@@ -31,13 +33,35 @@ function init(websocket) {
      *
      * thus we need to parse the URL to see if there is anything in it related to the game*/
 
+
+  // generate the id for the user
+  const location = window.location
+
+  const hostname = location.hostname
+  const port = location.port
+
+  // https://stackoverflow.com/a/68470365
+  const random_string = (len, chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') => [...Array(len)].map(() => chars.charAt(Math.floor(Math.random() * chars.length))).join('')
+  const salt = random_string(5)
+
+  let id = hostname + "-" + port + "-" + salt 
+
   const message = {
       type: "request",
-      operation: "create-match",
-      id: "linux1.cs.uchicago.edu:54793-00001246",
+      operation: "list-games",
+      id: id
     }
   const jsoned_message = JSON.stringify(message)
-  console.log("sending", jsoned_message)
+  console.log("sending >>>", message)
   websocket.send(jsoned_message)
+  });
+}
+
+function listen(websocket) {
+  websocket.addEventListener("message", ({ data }) => {
+    // receive message from the server
+    const message = JSON.parse(data);
+    console.log("recieved <<<", message)
+
   });
 }

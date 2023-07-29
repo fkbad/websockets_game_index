@@ -18,6 +18,8 @@ import websockets.client
 import websockets.server
 import websockets.exceptions
 
+from coolname import generate_slug
+
 
 import logging
 logging.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%I:%M:%S %p', level=logging.DEBUG)
@@ -212,7 +214,32 @@ class VimeraWebsocketsClient():
                             who's content depends on what operation this is in response to
             }
 
+        ======================================================================
         result contents based on operation:
+        ======================================================================
+            create-match: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#create-a-new-match
+                          result contents only include the "match-id" of the successfully created match
+
+                    eg:
+                    {
+                      "match-id": "abcdef"
+                    }
+
+        ======================================================================
+            join-match: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#join-a-match
+                        contains empty object {}, 
+
+                    eg:
+                    result = {}
+
+        ======================================================================
+            spectate-match: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#spectate-a-match
+                        contains empty object {}, 
+
+                    eg:
+                    result = {}
+
+        ======================================================================
             list-games : https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#list-games
                         a single "games" member, containing an array of objects, 
                             one per game supported in the server. 
@@ -239,26 +266,7 @@ class VimeraWebsocketsClient():
                             ]
                      }
 
-            create-match: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#create-a-new-match
-                          result contents only include the "match-id" of the successfully created match
-
-                    eg:
-                    {
-                      "match-id": "abcdef"
-                    }
-
-            join-match: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#join-a-match
-                        contains empty object {}, 
-
-                    eg:
-                    result = {}
-
-            spectate-match: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#spectate-a-match
-                        contains empty object {}, 
-
-                    eg:
-                    result = {}
-
+        ======================================================================
             game-action: https://chimera-docs.readthedocs.io/en/latest/reference/message-format.html#game-specific-actions
                         fully game specific data is provided in the result
         """
@@ -484,7 +492,7 @@ class VimeraWebsocketsServer():
 
         # https://github.com/uchicago-cs/chimera/blob/e4feef8d35048dc16d7b71d26f88197a0ebcc7db/src/chimera/backend/server.py#L160
         try:
-            msg = json.loads(raw_message)
+            message = json.loads(raw_message)
         except json.JSONDecodeError as json_exc:
             error_details = f"Incorrect JSON (parsing failed at line {json_exc.lineno} column {json_exc.colno})"
             await client.send_error(
@@ -494,7 +502,7 @@ class VimeraWebsocketsServer():
             return
 
         # Check that a type member has been included
-        message_type = msg.get("type")
+        message_type = message.get("type")
         if message_type is None:
             await client.send_error(
                                     error_code=ErrorCode.INCORRECT_REQUEST,
@@ -506,12 +514,12 @@ class VimeraWebsocketsServer():
         if message_type != "request":
             await client.send_error(
                                     error_code=ErrorCode.INCORRECT_REQUEST,
-                                    data={"details": f"Incorrect message type: {msg['type']}"}
+                                    data={"details": f"Incorrect message type: {message['type']}"}
                                     )
             return
 
         # Check that the request includes an id
-        msg_id = msg.get("id")
+        msg_id = message.get("id")
         if msg_id is None:
             await client.send_error(
                                     error_code=ErrorCode.INCORRECT_REQUEST,
@@ -521,12 +529,14 @@ class VimeraWebsocketsServer():
 
         # at this point, there is a message ID associated with the client's message
         # so we assign the client an ID 
-        client.id = msg_id
+        if client.id is None:
+            client.id = msg_id
+
         # logging.debug(f"assigned client : {client} with id {msg_id}")
 
         # Check that the operation is correct (i.e., an operation
         # has been specified, and we have a handler for that operation)
-        operation = msg.get("operation")
+        operation = message.get("operation")
         if operation is None:
             await client.send_error(
                                     error_code=ErrorCode.INCORRECT_REQUEST,
@@ -548,23 +558,53 @@ class VimeraWebsocketsServer():
         # sanity check 
         assert isinstance(operation,str)
 
+        # for all operations, all that is needed is the result block
+        # to send to Client.send_response()
+        result = {}
+
+        message_params = message.get("params)")
+
         try:
             logging.debug(f"\n\ngot to operation parsing with operation: {operation}")
             match operation.strip():
                 case Operation.CREATE_MATCH.value:
                     logging.debug(f"{client} trying to Create Match")
 
+                    # create match only sends back match-id
+                    # thanks coolname
+                    match_id = generate_slug(3)
+
+                    result["match-id"] = match_id
+
+                    await client.send_response(result)
+                    
                 case Operation.JOIN_MATCH.value:
                     logging.debug(f"{client} trying to Join Match")
+
+                    # join_match needs nothing if it was successful
+                    await client.send_response(result)
 
                 case Operation.SPECTATE_MATCH.value:
                     logging.debug(f"{client} trying to Spectate Match")
 
+                    # spectate similarly only needs nothing if it was successful
+                    await client.send_response(result)
+
                 case Operation.LIST_GAMES.value:
                     logging.debug(f"{client} trying to List Games")
 
+                    # games_for_list_games = self.list_games()
+                    games_for_list_games = [{"id":"p1wins","description":"player 1 wins that's literally it"}]
+                    result["games"] = games_for_list_games
+
+                    await client.send_response(result)
+
                 case Operation.GAME_ACTION.value:
-                   logging.debug(f"{client} trying to perform a Game Action")
+                   logging.debug(f"{client} trying to perform a Game Action with params {message_params}")
+
+                   result["game-specific-action-info"] = "totally recieved feedback for a game-action :)"
+
+                   await client.send_response(result)
 
                 case _:
                     await client.send_error(

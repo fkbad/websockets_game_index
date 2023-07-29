@@ -20,6 +20,9 @@ window.addEventListener("DOMContentLoaded", () => {
   // listening for someone opening a websocket
   initGame(websocket)
 
+  // listen for messages
+  listen(websocket)
+
 });
 
 
@@ -80,8 +83,13 @@ function initGame(websocket) {
     // const uuid = self.crypto.randomUUID()
     // let id = hostname + "-" + port + "-" + uuid + "--:3"
 
-    const id = self.crypto.randomUUID()
-    let id = hostname + "-" + port + "-" + uuid + "--:3"
+    // https://stackoverflow.com/a/68470365
+    const random_string = (len, chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') => [...Array(len)].map(() => chars.charAt(Math.floor(Math.random() * chars.length))).join('')
+
+    const salt = random_string(5)
+
+
+    let id = hostname + "-" + port + "-" + salt 
 
     // placeholder event 
     let message = {
@@ -118,7 +126,7 @@ function initGame(websocket) {
       message.params = params
     }
     const jsoned_message = JSON.stringify(message)
-    console.log("sending :",message)
+    console.log("sending >>> ",message)
     websocket.send(jsoned_message)
   });
 }
@@ -129,7 +137,7 @@ function listen(websocket) {
   websocket.addEventListener("message", ({ data }) => {
     // receive message from the server
     const message = JSON.parse(data);
-    console.log("recieved", message)
+    console.log("recieved <<<", message)
     // switch (message.type) {
     //   case "error":
     //     showMessage(message.message);
