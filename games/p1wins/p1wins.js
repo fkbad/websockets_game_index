@@ -76,8 +76,11 @@ function initGame(websocket) {
 
     const hostname = location.hostname
     const port = location.port
-    const uuid = self.crypto.randomUUID()
 
+    // const uuid = self.crypto.randomUUID()
+    // let id = hostname + "-" + port + "-" + uuid + "--:3"
+
+    const id = self.crypto.randomUUID()
     let id = hostname + "-" + port + "-" + uuid + "--:3"
 
     // placeholder event 
@@ -117,6 +120,24 @@ function initGame(websocket) {
     const jsoned_message = JSON.stringify(message)
     console.log("sending :",message)
     websocket.send(jsoned_message)
+  });
+}
+
+
+
+function listen(websocket) {
+  websocket.addEventListener("message", ({ data }) => {
+    // receive message from the server
+    const message = JSON.parse(data);
+    console.log("recieved", message)
+    // switch (message.type) {
+    //   case "error":
+    //     showMessage(message.message);
+    //     break;
+
+    //   default:
+    //     throw new Error(`Unsupported event type: ${message.type}.`);
+    // }
   });
 }
 
